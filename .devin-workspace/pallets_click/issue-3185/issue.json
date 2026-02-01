@@ -1,0 +1,6 @@
+{
+  "title": "Flag_value not working in 8.3.1",
+  "body": "Sorry for opening a new bug. \nI understood (maybe wrongly) that https://github.com/pallets/click/issues/3130 had been completed. \n\nYet, when I moved to 8.3.1, I still have the same issue.\nIs this meant for an 8.3.2 or do we have to wait for 9.0.0 for that to be fixed?",
+  "number": 3185,
+  "url": "https://github.com/pallets/click/issues/3185"
+}

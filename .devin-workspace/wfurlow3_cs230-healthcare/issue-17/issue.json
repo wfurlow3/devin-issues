@@ -1,0 +1,6 @@
+{
+  "title": "Training results are not reproducible across runs",
+  "body": "Running the same training command multiple times produces different validation metrics. We should set and document random seeds for Python, NumPy, and PyTorch.",
+  "number": 17,
+  "url": "https://github.com/wfurlow3/CS230-healthcare/issues/17"
+}

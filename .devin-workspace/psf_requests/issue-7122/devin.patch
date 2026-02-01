@@ -1,0 +1,59 @@
+```diff
+diff --git a/src/requests/sessions.py b/src/requests/sessions.py
+index 7d34b29f..87cfb186 100644
+--- a/src/requests/sessions.py
++++ b/src/requests/sessions.py
+@@ -18,6 +18,7 @@ from .auth import _basic_auth_str
+ from .compat import Mapping, cookielib, urljoin, urlparse
+ from .cookies import (
+     RequestsCookieJar,
++    _copy_cookie_jar,
+     cookiejar_from_dict,
+     extract_cookies_to_jar,
+     merge_cookies,
+@@ -472,9 +473,8 @@ class Session(SessionRedirectMixin):
+             cookies = cookiejar_from_dict(cookies)
+ 
+         # Merge with session cookies
+-        merged_cookies = merge_cookies(
+-            merge_cookies(RequestsCookieJar(), self.cookies), cookies
+-        )
++        session_cookies = _copy_cookie_jar(self.cookies)
++        merged_cookies = merge_cookies(session_cookies, cookies)
+ 
+         # Set environment's basic authentication if not explicitly set.
+         auth = request.auth
+diff --git a/tests/test_requests.py b/tests/test_requests.py
+index 257d9d7a..22a27b06 100644
+--- a/tests/test_requests.py
++++ b/tests/test_requests.py
+@@ -1406,6 +1406,28 @@ class TestRequests:
+         jar.set_policy(MyCookiePolicy())
+         assert isinstance(jar.copy().get_policy(), MyCookiePolicy)
+ 
++    def test_custom_cookie_policy_persistence(self):
++        """Test that custom CookiePolicy is preserved in Session.prepare_request.
++
++        See GH #7122
++        """
++        policy_consulted = []
++
++        class TrackingCookiePolicy(cookielib.DefaultCookiePolicy):
++            def return_ok(self, cookie, request):
++                policy_consulted.append(True)
++                return super().return_ok(cookie, request)
++
++        s = requests.Session()
++        s.cookies = requests.cookies.RequestsCookieJar(policy=TrackingCookiePolicy())
++        s.cookies.set("test_cookie", "test_value", domain="example.com")
++
++        r = requests.Request("GET", "http://example.com")
++        pr = s.prepare_request(r)
++
++        assert len(policy_consulted) > 0, "Custom cookie policy was not consulted"
++        assert isinstance(pr._cookies.get_policy(), TrackingCookiePolicy)
++
+     def test_time_elapsed_blank(self, httpbin):
+         r = requests.get(httpbin("get"))
+         td = r.elapsed
+```

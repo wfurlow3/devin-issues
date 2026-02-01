@@ -1,0 +1,99 @@
+Here is the unified diff in git-apply compatible format:
+
+```diff
+diff --git a/CHANGES.rst b/CHANGES.rst
+index 13eec7b..774d596 100644
+--- a/CHANGES.rst
++++ b/CHANGES.rst
+@@ -1,5 +1,10 @@
+ .. currentmodule:: click
+ 
++Unreleased
++
++-   Fix handling of ``flag_value`` when ``is_flag=False`` to allow such options to be
++    used without an explicit value. :issue:`3084`
++
+ Version 8.3.1
+ --------------
+ 
+diff --git a/src/click/core.py b/src/click/core.py
+index 57f549c..6adc65c 100644
+--- a/src/click/core.py
++++ b/src/click/core.py
+@@ -2777,10 +2777,13 @@ class Option(Parameter):
+             # Implicitly a flag because secondary options names were given.
+             elif self.secondary_opts:
+                 is_flag = True
+-        # The option is explicitly not a flag. But we do not know yet if it needs a
+-        # value or not. So we look at the default value to determine it.
++
++        # The option is explicitly not a flag, but to determine whether or not it needs
++        # value, we need to check if `flag_value` or `default` was set. Either one is
++        # sufficient.
++        # Ref: https://github.com/pallets/click/issues/3084
+         elif is_flag is False and not self._flag_needs_value:
+-            self._flag_needs_value = self.default is UNSET
++            self._flag_needs_value = flag_value is not UNSET or self.default is UNSET
+ 
+         if is_flag:
+             # Set missing default for flags if not explicitly required or prompted.
+diff --git a/tests/test_options.py b/tests/test_options.py
+index 359d037..f198d10 100644
+--- a/tests/test_options.py
++++ b/tests/test_options.py
+@@ -15,6 +15,7 @@ import click
+ from click import Option
+ from click import UNPROCESSED
+ from click._utils import UNSET
++from click.testing import CliRunner
+ 
+ 
+ def test_prefixes(runner):
+@@ -2275,3 +2276,46 @@ def test_custom_type_frozenset_flag_value(runner):
+     result = runner.invoke(rcli, ["--without-scm-ignore-files"])
+     assert result.stdout == "frozenset()"
+     assert result.exit_code == 0
++
++
++@pytest.mark.parametrize(
++    ("flag_type", "args", "expect_output"),
++    [
++        (str, [], "Default\n"),
++        (str, ["--theflag"], "FlagValue\n"),
++        (str, ["--theflag", "value"], "value\n"),
++        (int, [], "0\n"),
++        (int, ["--theflag"], "1\n"),
++        (int, ["--theflag", "2"], "2\n"),
++    ],
++)
++def test_flag_value_on_option_with_zero_or_one_args(flag_type, args, expect_output):
++    """An option with flag_value and is_flag=False can be
++    omitted or used with 0 or 1 args.
++
++    Regression test for https://github.com/pallets/click/issues/3084
++    """
++    if flag_type is str:
++        flagopt = click.option(
++            "--theflag",
++            type=str,
++            is_flag=False,
++            flag_value="FlagValue",
++            default="Default",
++        )
++    elif flag_type is int:
++        flagopt = click.option(
++            "--theflag", type=int, is_flag=False, flag_value=1, default=0
++        )
++    else:
++        raise NotImplementedError(flag_type)
++
++    @click.command()
++    @flagopt
++    def cmd(theflag):
++        click.echo(theflag)
++
++    runner = CliRunner()
++    result = runner.invoke(cmd, args)
++    assert result.exit_code == 0
++    assert result.output == expect_output
+```

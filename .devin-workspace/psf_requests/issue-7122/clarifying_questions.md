@@ -1,0 +1,7 @@
+- Should the fix also handle the case where request.cookies has a custom policy that should be merged/preserved?
+- Should we add deprecation warnings or documentation updates for users who may be working around this bug?
+- Are there any specific Python version constraints we need to consider for the fix?
+- Should the test use httpbin fixtures or can it be a unit test with mocked requests?
+- Is there a preference for where the new test should be placed within test_requests.py?
+- Should we also verify the fix works correctly during redirect handling (resolve_redirects)?
+- Are there any performance concerns with using _copy_cookie_jar vs the current approach?
